@@ -10,6 +10,7 @@ Run:
 
 Optional:
     python main.py --console
+    python main.py --matplotlib
     python main.py --test
 """
 
@@ -88,6 +89,62 @@ def run_console_visualization(data: List[int], delay: float = 0.08) -> List[int]
     return final_state
 
 
+def run_matplotlib_visualization(
+    data: List[int], interval_ms: int = DEFAULT_DELAY_MS
+) -> List[int]:
+    """Visualize bubble sort using Matplotlib animation."""
+    try:
+        import matplotlib.pyplot as plt
+        from matplotlib.animation import FuncAnimation
+    except Exception as exc:
+        raise RuntimeError(
+            "Matplotlib is unavailable. " "Install it with: pip install matplotlib"
+        ) from exc
+
+    steps = list(bubble_sort_steps(data))
+    if not steps:
+        return data[:]
+
+    fig, ax = plt.subplots(figsize=(11, 5.5))
+    x_positions = list(range(len(data)))
+    bars = ax.bar(x_positions, data, color="#6fa8dc")
+    ax.set_title("Bubble Sort Visualization (Matplotlib)")
+    ax.set_xlabel("Index")
+    ax.set_ylabel("Value")
+    ax.set_xlim(-0.5, len(data) - 0.5)
+    ax.set_ylim(0, max(data) * 1.2)
+
+    status_text = ax.text(0.01, 0.97, "", transform=ax.transAxes, va="top")
+
+    def update(frame_index: int):
+        state, active_a, active_b, sorted_start = steps[frame_index]
+        for idx, (bar, value) in enumerate(zip(bars, state)):
+            bar.set_height(value)
+            color = "#6aa84f" if sorted_start and idx >= sorted_start else "#6fa8dc"
+            if idx in (active_a, active_b):
+                color = "#e69138"
+            bar.set_color(color)
+
+        status_text.set_text(f"Step {frame_index + 1}/{len(steps)}")
+        return list(bars) + [status_text]
+
+    animation = FuncAnimation(
+        fig,
+        update,
+        frames=len(steps),
+        interval=interval_ms,
+        repeat=False,
+        blit=False,
+    )
+
+    plt.tight_layout()
+    plt.show()
+
+    final_state = steps[-1][0][:]
+    print("Sorted data:", final_state)
+    return final_state
+
+
 def launch_gui(data: List[int]) -> None:
     """Launch the Tkinter visualization."""
     import tkinter as tk
@@ -116,34 +173,36 @@ def launch_gui(data: List[int]) -> None:
             controls = tk.Frame(root, pady=5)
             controls.pack()
 
-            tk.Button(controls, text="Generate New Data", command=self.reset_data, width=16).grid(row=0, column=0, padx=5)
-            tk.Button(controls, text="Start Sorting", command=self.start_sorting, width=16).grid(row=0, column=1, padx=5)
-            tk.Button(controls, text="Shuffle", command=self.shuffle_data, width=12).grid(row=0, column=2, padx=5)
+            tk.Button(
+                controls, text="Generate New Data", command=self.reset_data, width=16
+            ).grid(row=0, column=0, padx=5)
+            tk.Button(
+                controls, text="Start Sorting", command=self.start_sorting, width=16
+            ).grid(row=0, column=1, padx=5)
+            tk.Button(
+                controls, text="Shuffle", command=self.shuffle_data, width=12
+            ).grid(row=0, column=2, padx=5)
 
             tk.Label(controls, text="Bars:").grid(row=0, column=3, padx=(15, 5))
             self.size_scale = tk.Scale(
-                controls,
-                from_=10,
-                to=60,
-                orient="horizontal",
-                length=180
+                controls, from_=10, to=60, orient="horizontal", length=180
             )
             self.size_scale.set(len(self.data))
             self.size_scale.grid(row=0, column=4, padx=5)
 
             tk.Label(controls, text="Speed (ms):").grid(row=0, column=5, padx=(15, 5))
             self.speed_scale = tk.Scale(
-                controls,
-                from_=10,
-                to=500,
-                orient="horizontal",
-                length=180
+                controls, from_=10, to=500, orient="horizontal", length=180
             )
             self.speed_scale.set(self.delay_ms)
             self.speed_scale.grid(row=0, column=6, padx=5)
 
-            self.status_var = tk.StringVar(value="Ready. Press 'Start Sorting' to begin.")
-            tk.Label(root, textvariable=self.status_var, font=("Arial", 11)).pack(pady=(0, 5))
+            self.status_var = tk.StringVar(
+                value="Ready. Press 'Start Sorting' to begin."
+            )
+            tk.Label(root, textvariable=self.status_var, font=("Arial", 11)).pack(
+                pady=(0, 5)
+            )
 
             self.canvas = tk.Canvas(root, width=960, height=440, bg="white")
             self.canvas.pack(padx=20, pady=10, fill="both", expand=True)
@@ -167,7 +226,9 @@ def launch_gui(data: List[int]) -> None:
             self.status_var.set("Generated new random data.")
             self.draw_data(self.data)
 
-        def draw_data(self, data: List[int], active_a=None, active_b=None, sorted_start=0) -> None:
+        def draw_data(
+            self, data: List[int], active_a=None, active_b=None, sorted_start=0
+        ) -> None:
             self.canvas.delete("all")
 
             canvas_width = max(self.canvas.winfo_width(), 960)
@@ -190,7 +251,9 @@ def launch_gui(data: List[int]) -> None:
                     color = "#e69138"
 
                 self.canvas.create_rectangle(x0, y0, x1, y1, fill=color, outline="")
-                self.canvas.create_text((x0 + x1) / 2, y0 - 8, text=str(value), font=("Arial", 9))
+                self.canvas.create_text(
+                    (x0 + x1) / 2, y0 - 8, text=str(value), font=("Arial", 9)
+                )
 
         def start_sorting(self) -> None:
             if self.is_running:
@@ -223,7 +286,9 @@ def self_test() -> None:
     final_state = None
     for state, _, _, _ in bubble_sort_steps(sample):
         final_state = state
-    assert final_state == sorted(sample), f"Expected {sorted(sample)}, got {final_state}"
+    assert final_state == sorted(
+        sample
+    ), f"Expected {sorted(sample)}, got {final_state}"
     print("Self-test passed. Final sorted state:", final_state)
 
 
@@ -238,6 +303,10 @@ def main() -> None:
 
     if "--console" in args:
         run_console_visualization(data)
+        return
+
+    if "--matplotlib" in args:
+        run_matplotlib_visualization(data)
         return
 
     try:
